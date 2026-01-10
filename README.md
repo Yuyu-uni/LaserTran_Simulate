@@ -45,6 +45,14 @@
 *   `pixi.toml`: 项目依赖配置文件。
 
 
+## Git 分支说明 (Git Branching)
+
+本项目当前包含以下主要分支：
+
+*   **`main`**: 主分支，包含稳定的核心代码，运行于Windows平台，可以得到更好的性能和更大内存。
+*   **`DevOnLinux`**: 位于 Linux 环境的开发分支。
+
+
 ## 环境依赖 (Dependencies)
 
 本项目使用 [Pixi](https://prefix.dev/) 进行包管理。主要依赖包括：

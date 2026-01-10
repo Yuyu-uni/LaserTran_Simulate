@@ -17,8 +17,9 @@ def main():
     
     medium = snow_medium.generate(
         L=0.005,                 # 介质物理尺寸 5mm (足以包含多个晶粒)
-        grid_resolution=128,     # 介质网格分辨率 (确保每个晶粒有足够像素描述)
-        seed=42                  # 随机种子
+        grid_resolution=256,     # 介质网格分辨率 (确保每个晶粒有足够像素描述)
+        seed=42,                 # 随机种子
+        max_memory_gb=5.0       # 最大内存使用量 (GB)
     )
     
     # 比较体积分数的理论值和模拟值
