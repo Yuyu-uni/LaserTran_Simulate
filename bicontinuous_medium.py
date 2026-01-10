@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.special import erfinv
+import os
+from pathlib import Path
 
 class BicontinuousMedium:
     """
@@ -38,20 +40,48 @@ class BicontinuousMedium:
         # return SSA
         return 0.1  # 占位符返回值
 
-    def generate(self, L, grid_resolution, seed, max_memory_gb=2.0):
+    def generate(self, L, grid_resolution, seed, max_memory_gb=2.0, 
+                  cache_dir=None, force_regenerate=False):
         '''
-        生成3D双连续介质
+        生成3D双连续介质（支持缓存加载）
         
         :param L(float): 立方体边长(m)
         :param grid_resolution(int): 网格分辨率（每边网格数）
         :param seed(int): 随机种子
         :param max_memory_gb(float): 最大内存使用量（GB），用于控制分块大小
+        :param cache_dir(str): 缓存目录，如果指定则会检查/保存缓存文件
+        :param force_regenerate(bool): 是否强制重新生成（忽略缓存）
         '''
-        if seed is not None:
-            np.random.seed(seed)
-            
+        # 先设置参数以便生成文件名
         self.L = L
         self.resolution = grid_resolution
+        
+        # 检查是否存在缓存文件
+        if cache_dir and not force_regenerate:
+            existing_file = self.find_existing_file(
+                directory=cache_dir,
+                N=self.N,
+                mean_waveNumber=self.mean_waveNumber,
+                b=self.b,
+                fv=self.fv,
+                L=L,
+                resolution=grid_resolution,
+                seed=seed
+            )
+            if existing_file:
+                print("=" * 50)
+                print("🚀 发现已存在的随机场数据，使用快速加载模式")
+                print("=" * 50)
+                self.load_from_file(existing_file)
+                return self.binary_medium
+        
+        # 开始生成新的随机场
+        print("=" * 50)
+        print("⏳ 正在生成新的随机场...")
+        print("=" * 50)
+        
+        if seed is not None:
+            np.random.seed(seed)
         
         # 生成坐标网格
         x = np.linspace(0, L, grid_resolution)
@@ -132,6 +162,10 @@ class BicontinuousMedium:
         # 进行二值化
         self._self_binarize()
         
+        # 自动保存缓存
+        if cache_dir:
+            self.save_to_file(directory=cache_dir, seed=seed)
+        
         # 返回二值化后的介质
         return self.binary_medium
 
@@ -188,3 +222,105 @@ class BicontinuousMedium:
             raise ValueError("轴向参数 axis 必须为 0 (x), 1 (y), 或 2 (z)。")
         
         return slice_image
+    
+    
+    def get_filename(self, seed=None):
+        '''
+        根据介质参数生成唯一的文件名
+        
+        :param seed(int): 随机种子
+        :return: 文件名字符串 (不包含扩展名)
+        '''
+        # 格式: N{N}_k{mean_waveNumber}_b{b}_fv{fv}_L{L}_res{resolution}_seed{seed}
+        filename = f"N{self.N}_k{self.mean_waveNumber:.1f}_b{self.b:.3f}_fv{self.fv:.3f}"
+        if self.L is not None:
+            filename += f"_L{self.L*1000:.2f}mm"
+        if self.resolution is not None:
+            filename += f"_res{self.resolution}"
+        if seed is not None:
+            filename += f"_seed{seed}"
+        return filename
+    
+    def save_to_file(self, directory="RawData", seed=None):
+        '''
+        将生成的随机场和二值化介质保存到文件
+        
+        :param directory(str): 保存目录
+        :param seed(int): 随机种子 (用于文件名)
+        :return: 保存的文件路径
+        '''
+        if self.binary_medium is None:
+            raise ValueError("请先生成介质 (调用 generate 方法) 后再保存。")
+        
+        # 确保目录存在
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        
+        filename = self.get_filename(seed)
+        filepath = os.path.join(directory, filename + ".npz")
+        
+        # 保存所有必要数据
+        np.savez_compressed(
+            filepath,
+            scalar_field=self.scalar_field,
+            binary_medium=self.binary_medium,
+            N=self.N,
+            mean_waveNumber=self.mean_waveNumber,
+            b=self.b,
+            fv=self.fv,
+            L=self.L,
+            resolution=self.resolution
+        )
+        
+        print(f"✅ 随机场数据已保存到: {filepath}")
+        return filepath
+    
+    def load_from_file(self, filepath):
+        '''
+        从文件加载已保存的随机场和二值化介质
+        
+        :param filepath(str): 文件路径
+        :return: self (链式调用)
+        '''
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"文件不存在: {filepath}")
+        
+        print(f"📂 正在加载随机场数据: {filepath}")
+        data = np.load(filepath)
+        
+        # 恢复所有数据
+        self.scalar_field = data['scalar_field']
+        self.binary_medium = data['binary_medium']
+        self.N = int(data['N'])
+        self.mean_waveNumber = float(data['mean_waveNumber'])
+        self.b = float(data['b'])
+        self.fv = float(data['fv'])
+        self.L = float(data['L'])
+        self.resolution = int(data['resolution'])
+        
+        print(f"✅ 加载完成! 分辨率: {self.resolution}^3, 体积分数: {self.fv}")
+        return self
+    
+    @staticmethod
+    def find_existing_file(directory="RawData", N=None, mean_waveNumber=None, b=None, fv=None, L=None, resolution=None, seed=None):
+        '''
+        查找符合参数的已存在文件
+        
+        :return: 文件路径 (如果存在)，否则返回 None
+        '''
+        if not os.path.exists(directory):
+            return None
+        
+        # 构建期望的文件名模式
+        expected_prefix = f"N{N}_k{mean_waveNumber:.1f}_b{b:.3f}_fv{fv:.3f}"
+        if L is not None:
+            expected_prefix += f"_L{L*1000:.2f}mm"
+        if resolution is not None:
+            expected_prefix += f"_res{resolution}"
+        if seed is not None:
+            expected_prefix += f"_seed{seed}"
+        
+        expected_file = os.path.join(directory, expected_prefix + ".npz")
+        
+        if os.path.exists(expected_file):
+            return expected_file
+        return None

@@ -5,20 +5,40 @@ import matplotlib
 matplotlib.use('Agg')  # 使用非交互式后端以支持无显示环境下的绘图
 
 import matplotlib.pyplot as plt
+import os
+
+# ========== 配置参数 ==========
+PARAMS = {
+    'N': 1000,                    # 蒙特卡洛叠加次数
+    'mean_waveNumber': 5349.7,    # 平均波数
+    'b': 1.345,                   # 粒径分布参数
+    'fv': 0.194,                  # 冰的体积分布
+    'L': 0.005,                   # 介质物理尺寸 5mm
+    'grid_resolution': 128,       # 介质网格分辨率
+    'seed': 42,                    # 随机种子
+    'RAW_DATA_DIR': "RawData",          # 随机场数据保存目录
+    'FORCE_REGENERATE': False          # 设为 True 强制重新生成
+}
+
+
+# ============================
 
 def main():
     # 定义双连续介质参数
     snow_medium = BicontinuousMedium(
-        N=1000,
-        mean_waveNumber=5349.7,  # 平均波数
-        b=1.345,                 # 粒径分布参数
-        fv=0.194                 # 冰的体积分布
+        N=PARAMS['N'],
+        mean_waveNumber=PARAMS['mean_waveNumber'],
+        b=PARAMS['b'],
+        fv=PARAMS['fv']
     )
     
+    # 生成或加载随机场（自动检测缓存）
     medium = snow_medium.generate(
-        L=0.005,                 # 介质物理尺寸 5mm (足以包含多个晶粒)
-        grid_resolution=128,     # 介质网格分辨率 (确保每个晶粒有足够像素描述)
-        seed=42                  # 随机种子
+        L=PARAMS['L'],
+        grid_resolution=PARAMS['grid_resolution'],
+        seed=PARAMS['seed'],
+        cache_dir=PARAMS['RAW_DATA_DIR'],
+        force_regenerate=PARAMS['FORCE_REGENERATE']
     )
     
     # 比较体积分数的理论值和模拟值
