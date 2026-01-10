@@ -1,37 +1,57 @@
 # LaserTran_Simulate
-Laser Snow Scattering Simulation Related Papers, Using Python Reproduction Code Repository
 
-# TEST:Python 简易计算器
+## 项目简介 (Project Overview)
 
-这是一个使用安全 AST 求值实现的简易命令行计算器，支持交互式 REPL 与直接在命令行传入表达式求值。
+**LaserTran_Simulate** 是一个基于 Python 的代码复现工作。该项目主要用于模拟雪的微观结构（Snow Microstructure），并研究激光或光子在复杂介质中的传输模拟。
 
-特性：
+## 理论基础 (Theoretical Basis)
+核心算法参考了以下文献：
+> **Xiong, C., et al.** "Modeling of Metric and Rayleigh Wave Propagation in Snow With a Bicontinuous Medium." *IEEE Transactions on Geoscience and Remote Sensing (TGRS)*, 2015.
+> 
+## TODOlist1: 双连续介质模拟生成
+基于 **Gaussian Random Fields** 方法生成随机场，并通过阈值分割实现双相（冰/空气）介质的构建。
 
-- 安全解析表达式（不直接使用 eval）
-- 支持基本算术：+ - * / % ** //
-- 支持括号、小数与负数
-- 支持常用数学函数：sin, cos, tan, asin, acos, atan, sqrt, log, log10, exp, pow, fabs
-- 常量：pi, e
+通过叠加大量随机方向和相位的余弦波来构建标量场 $S(\mathbf{r})$，然后根据目标体积分数 $f_v$ 进行二值化处理。
 
-快速开始
+### 主要特性 (Features)
 
-在项目目录运行交互式 REPL：
+*   **物理参数控制**：支持自定义平均波数、粒径分布参数 ($b$) 和冰体积分数 ($f_v$)。
+*   **内存优化**：实现了分块（Batch/Chunk）计算逻辑，支持在高分辨率（如 $128^3$ 或更高）下生成介质，避免内存溢出。
+*   **可视化**：自动生成并保存介质的切片图像，直观展示微观结构。
+*   **Headless 支持**：针对 Linux 服务器/无头环境进行了优化，无需图形界面即可运行。
 
-```bash
-python main.py
-```
 
-示例（命令行直接计算表达式）：
+### 复现结果
 
-```bash
-python main.py 2+3*4
-python main.py "sin(pi/2)"
-python main.py "sqrt(2)"
-```
+运行完成后，程序在 `Results/` 目录下生成切片预览图：
+*   `Results/snow_microstructure.png`
 
-注意
+同时控制台会输出实际生成的体积分数统计。
+**生成结果与论文符合较好。**
 
-- 表达式应只包含受支持的运算、函数与常量；其它使用会给出错误提示。
+### 示例参数
 
-如果需要我可以：添加更多 math 函数、保存历史、或做一个简单的 GUI。欢迎告诉我你的需求。
+默认配置用于模拟典型的雪微观结构：
+*   尺寸 $L = 5\text{ mm}$
+*   分辨率 $N = 128$ (体素大小 $\approx 40\mu m$)
+*   平均波数 $\bar{k} = 5349.7 \text{ m}^{-1}$
+*   体积分数 $f_v = 0.194$
+
+
+## 文件结构 (File Structure)
+
+*   `bicontinuous_medium.py`: 核心类 `BicontinuousMedium`，包含随机场生成、分块计算和二值化逻辑。
+*   `main.py`: 主程序，设置物理参数，调用生成器并保存结果。
+*   `pixi.toml`: 项目依赖配置文件。
+
+
+## 环境依赖 (Dependencies)
+
+本项目使用 [Pixi](https://prefix.dev/) 进行包管理。主要依赖包括：
+
+*   `python >= 3.14`
+*   `numpy` (数值计算)
+*   `scipy` (特殊函数 `erfinv`, `gamma`)
+*   `matplotlib` (绘图)
+*   `mypy` & `scipy-stubs` (类型检查)
 

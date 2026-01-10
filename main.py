@@ -1,109 +1,41 @@
-"""简单安全的 Python 计算器：支持交互式 REPL 和命令行表达式求值。"""
+from bicontinuous_medium import BicontinuousMedium
+import numpy as np
+from scipy.special import erfinv, gamma 
+import matplotlib
+matplotlib.use('Agg')  # 使用非交互式后端以支持无显示环境下的绘图
 
-import ast
-import operator as _operator
-import math
-import sys
-
-
-_OPS = {
-    ast.Add: _operator.add,
-    ast.Sub: _operator.sub,
-    ast.Mult: _operator.mul,
-    ast.Div: _operator.truediv,
-    ast.Mod: _operator.mod,
-    ast.Pow: _operator.pow,
-    ast.FloorDiv: _operator.floordiv,
-}
-
-_UNARY_OPS = {
-    ast.UAdd: lambda x: +x,
-    ast.USub: lambda x: -x,
-}
-
-# 允许的常量
-_NAMES = {
-    'pi': math.pi,
-    'e': math.e,
-}
-
-# 允许的函数（从 math 中挑选常用的）
-_FUNCS = {name: getattr(math, name) for name in (
-    'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sqrt', 'log', 'log10', 'exp', 'pow', 'fabs'
-)}
-
-
-def safe_eval(expr: str):
-    """安全地计算表达式，只允许受控的 AST 节点、常量和函数。"""
-    node = ast.parse(expr, mode='eval')
-
-    def _eval(n):
-        if isinstance(n, ast.Expression):
-            return _eval(n.body)
-        if isinstance(n, ast.Constant):
-            if isinstance(n.value, (int, float)):
-                return n.value
-            raise ValueError('Unsupported constant type')
-        if isinstance(n, ast.BinOp):
-            left = _eval(n.left)
-            right = _eval(n.right)
-            op = type(n.op)
-            if op in _OPS:
-                return _OPS[op](left, right)
-            raise ValueError('Unsupported binary operator')
-        if isinstance(n, ast.UnaryOp):
-            operand = _eval(n.operand)
-            op = type(n.op)
-            if op in _UNARY_OPS:
-                return _UNARY_OPS[op](operand)
-            raise ValueError('Unsupported unary operator')
-        if isinstance(n, ast.Name):
-            if n.id in _NAMES:
-                return _NAMES[n.id]
-            raise ValueError(f'Unknown name: {n.id}')
-        if isinstance(n, ast.Call):
-            # 仅允许直接的函数名调用，不允许属性访问或复杂表达式作为函数
-            if isinstance(n.func, ast.Name) and n.func.id in _FUNCS:
-                func = _FUNCS[n.func.id]
-                args = [_eval(a) for a in n.args]
-                return func(*args)
-            raise ValueError('Unsupported function or call')
-        if isinstance(n, ast.Tuple):
-            return tuple(_eval(elt) for elt in n.elts)
-        raise ValueError(f'Unsupported expression: {type(n).__name__}')
-
-    return _eval(node)
-
-
-def repl():
-    print('简易计算器，输入表达式回车计算。输入 `exit` 或 `quit` 退出。支持：+ - * / % ** 括号，小数，以及 math 函数（sin, cos, sqrt 等）。')
-    try:
-        while True:
-            s = input('>>> ').strip()
-            if not s:
-                continue
-            if s.lower() in ('exit', 'quit'):
-                break
-            try:
-                result = safe_eval(s)
-                print(result)
-            except Exception as e:
-                print('Error:', e)
-    except (EOFError, KeyboardInterrupt):
-        print()  # 优雅退出
-
+import matplotlib.pyplot as plt
 
 def main():
-    if len(sys.argv) > 1:
-        expr = ' '.join(sys.argv[1:])
-        try:
-            print(safe_eval(expr))
-        except Exception as e:
-            print('Error:', e)
-            sys.exit(1)
-    else:
-        repl()
-
-
-if __name__ == '__main__':
+    # 定义双连续介质参数
+    snow_medium = BicontinuousMedium(
+        N=1000,
+        mean_waveNumber=5349.7,  # 平均波数
+        b=1.345,                 # 粒径分布参数
+        fv=0.194                 # 冰的体积分布
+    )
+    
+    medium = snow_medium.generate(
+        L=0.005,                 # 介质物理尺寸 5mm (足以包含多个晶粒)
+        grid_resolution=128,     # 介质网格分辨率 (确保每个晶粒有足够像素描述)
+        seed=42                  # 随机种子
+    )
+    
+    # 比较体积分数的理论值和模拟值
+    actual_fv = np.sum(medium) / medium.size
+    print(f"🚀目标体积分数: {snow_medium.fv}")
+    print(f"🌟实际体积分数: {actual_fv:.4f}")
+    
+    plt.figure(figsize=(8, 8))
+    plt.imshow(snow_medium.get_slice_image(1), cmap='gray', interpolation='nearest')
+    plt.title(f"Snow Microstructure Slice(fv={actual_fv:.3f})")
+    plt.colorbar(label="Phase (0:Air, 1:Ice)")
+    
+    output_filename = "Results/snow_microstructure.png"
+    plt.savefig(output_filename)
+    print(f"Image saved to {output_filename}")
+    # plt.show()
+    
+    
+if __name__ == "__main__":
     main()
