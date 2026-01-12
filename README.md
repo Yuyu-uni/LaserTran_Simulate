@@ -75,4 +75,3 @@
 *   `scipy` (特殊函数 `erfinv`, `gamma`)
 *   `matplotlib` (绘图)
 *   `mypy` & `scipy-stubs` (类型检查)
-
