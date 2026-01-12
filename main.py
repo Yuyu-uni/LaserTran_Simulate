@@ -5,37 +5,59 @@ import matplotlib
 matplotlib.use('Agg')  # 使用非交互式后端以支持无显示环境下的绘图
 
 import matplotlib.pyplot as plt
+import os
+
+# ========== 配置参数 ==========
+PARAMS = {
+    'N': 1000,                    # 蒙特卡洛叠加次数
+    'mean_waveNumber': 5349.7,    # 平均波数
+    'b': 1.345,                   # 粒径分布参数
+    'fv': 0.194,                  # 冰的体积分布
+    'L': 0.01,                   # 介质物理尺寸 10mm
+    'grid_resolution': 128,       # 介质网格分辨率
+    'seed': 42,                    # 随机种子
+    'RAW_DATA_DIR': "RawData",          # 随机场数据保存目录
+    'FORCE_REGENERATE': False          # 设为 True 强制重新生成
+}
+
+
+# ============================
 
 def main():
     # 定义双连续介质参数
     snow_medium = BicontinuousMedium(
-        N=1000,
-        mean_waveNumber=5349.7,  # 平均波数
-        b=1.345,                 # 粒径分布参数
-        fv=0.194                 # 冰的体积分布
+        N=PARAMS['N'],
+        mean_waveNumber=PARAMS['mean_waveNumber'],
+        b=PARAMS['b'],
+        fv=PARAMS['fv']
     )
     
+    # 生成或加载随机场（自动检测缓存）
     medium = snow_medium.generate(
-        L=0.005,                 # 介质物理尺寸 5mm (足以包含多个晶粒)
-        grid_resolution=256,     # 介质网格分辨率 (确保每个晶粒有足够像素描述)
-        seed=42,                 # 随机种子
-        max_memory_gb=5.0        # 最大内存使用量 (GB)
+        L=PARAMS['L'],
+        grid_resolution=PARAMS['grid_resolution'],
+        seed=PARAMS['seed'],
+        cache_dir=PARAMS['RAW_DATA_DIR'],
+        force_regenerate=PARAMS['FORCE_REGENERATE'],
+        max_memory_gb=5.0
     )
     
     # 比较体积分数的理论值和模拟值
-    actual_fv = np.sum(medium) / medium.size
-    print(f"🚀目标体积分数: {snow_medium.fv}")
-    print(f"🌟实际体积分数: {actual_fv:.4f}")
+    # actual_fv = np.sum(medium) / medium.size
+    # print(f"🚀目标体积分数: {snow_medium.fv}")
+    # print(f"🌟实际体积分数: {actual_fv:.4f}")
     
-    plt.figure(figsize=(8, 8))
-    plt.imshow(snow_medium.get_slice_image(1), cmap='gray', interpolation='nearest')
-    plt.title(f"Snow Microstructure Slice(fv={actual_fv:.3f})")
-    plt.colorbar(label="Phase (0:Air, 1:Ice)")
+    # plt.figure(figsize=(8, 8))
+    # plt.imshow(snow_medium.get_slice_image(1), cmap='gray', interpolation='nearest')
+    # plt.title(f"Snow Microstructure Slice(fv={actual_fv:.3f})")
+    # plt.colorbar(label="Phase (0:Air, 1:Ice)")
     
-    output_filename = "Results/snow_microstructure.png"
-    plt.savefig(output_filename)
-    print(f"Image saved to {output_filename}")
+    # output_filename = "Results/snow_microstructure.png"
+    # plt.savefig(output_filename)
+    # print(f"Image saved to {output_filename}")
     # plt.show()
+    
+    snow_medium.visualize_3d(show_scalar_field=False, export_html=False, auto_downsample=True)
     
     
 if __name__ == "__main__":

@@ -12,3 +12,9 @@ __pycache__/
 # IDEs
 .vscode/
 .idea/
+
+# Raw data cache
+RawData/
+
+# Gemini context
+GEMINI.md
