@@ -261,8 +261,9 @@ class BicontinuousMedium:
         return 0.1  # 占位符返回值
     
     def visualize_3d(self, show_scalar_field=False, opacity=0.8, cmap="bone", 
-                     show_edges=False, window_size=(1024, 1024), export_html=False, 
-                     html_filename=None, auto_downsample=True, downsample_threshold=200):
+                     show_edges=False, window_size=(1024, 1024), 
+                     display_mode="interact", output_filename=None,
+                     auto_downsample=True, downsample_threshold=200):
         '''
         使用PyVista进行3D可视化，展示双连续介质结构
         
@@ -271,10 +272,20 @@ class BicontinuousMedium:
         :param cmap(str): 颜色映射方案
         :param show_edges(bool): 是否显示网格边缘
         :param window_size(tuple): 窗口大小 (宽, 高)
-        :param export_html(bool): 是否导出为HTML文件
-        :param html_filename(str): 导出的HTML文件名
+        :param display_mode(str): 呈现方式，可选值：
+            - "interact": 交互式3D显示（默认）
+            - "html": 导出为HTML文件
+            - "image": 导出为图片文件（支持png, jpg, svg, pdf等格式）
+        :param output_filename(str): 导出文件名（仅在 display_mode 为 "html" 或 "image" 时有效）
         :param auto_downsample(bool): 是否对高分辨率数据自动降采样以提升性能（默认True）
+        :param downsample_threshold(int): 降采样阈值，分辨率超过此值时自动降采样
         '''
+        # 验证 display_mode 参数
+        valid_modes = ["interact", "html", "image"]
+        if display_mode.lower() not in valid_modes:
+            raise ValueError(f"display_mode 必须是 {valid_modes} 之一，当前值: {display_mode}")
+        display_mode = display_mode.lower()
+        
         try:
             import pyvista as pv
         except ImportError:
@@ -327,8 +338,9 @@ class BicontinuousMedium:
             # 添加数据到单元
             grid.cell_data["values"] = data.flatten(order="F")
         
-        # 创建绘图器
-        plotter = pv.Plotter(window_size=window_size)
+        # 创建绘图器（图片导出模式需要使用off_screen）
+        off_screen = (display_mode == "image")
+        plotter = pv.Plotter(window_size=window_size, off_screen=off_screen)
         
         if show_scalar_field:
             # 体积渲染通常在黑色背景下效果更好，且能避免"bone"等亮色map在白背景下不可见的问题
@@ -337,7 +349,7 @@ class BicontinuousMedium:
             # 将单元数据转换为点数据，体积渲染效果更平滑
             grid_pt = grid.cell_data_to_point_data()
             
-            if export_html:
+            if display_mode == "html":
                 # ⚠️ HTML导出通常不支持复杂的体积渲染(Volume Rendering)，会导致黑屏
                 print("⚠️ HTML导出模式下，体积渲染可能不被支持。已自动切换为'多层等值面'显示以确保可见性。")                
                 # 生成5个等值面，覆盖数据范围
@@ -363,20 +375,35 @@ class BicontinuousMedium:
         # 添加边界框
         plotter.add_bounding_box(color="black", line_width=1)
         
-        if export_html:
-            if html_filename is None:
-                # 默认文件名
+        # 根据 display_mode 执行不同的操作
+        if display_mode == "interact":
+            # 交互式显示
+            plotter.show()
+        
+        elif display_mode == "html":
+            # 导出为HTML文件
+            if output_filename is None:
                 filename = self._get_filename() + ".html"
-                html_filename = os.path.join("Results", filename)
+                output_filename = os.path.join("Results", filename)
             
             # 确保目录存在
-            os.makedirs(os.path.dirname(os.path.abspath(html_filename)), exist_ok=True)
+            os.makedirs(os.path.dirname(os.path.abspath(output_filename)), exist_ok=True)
             
-            plotter.export_html(html_filename)
-            print(f"✔️ 3D场景已导出为HTML文件: {html_filename}")
-        else:
-            # 显示
-            plotter.show()
+            plotter.export_html(output_filename)
+            print(f"✔️ 3D场景已导出为HTML文件: {output_filename}")
+        
+        elif display_mode == "image":
+            # 导出为图片文件
+            if output_filename is None:
+                filename = self._get_filename() + ".png"
+                output_filename = os.path.join("Results", filename)
+            
+            # 确保目录存在
+            os.makedirs(os.path.dirname(os.path.abspath(output_filename)), exist_ok=True)
+            
+            # 使用off_screen渲染并截图保存
+            plotter.screenshot(output_filename, transparent_background=False)
+            print(f"✔️ 3D场景已导出为图片文件: {output_filename}")
 # endregion      
 
 # region 文件保存与加载相关方法  

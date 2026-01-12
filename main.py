@@ -14,7 +14,7 @@ PARAMS = {
     'b': 1.345,                   # 粒径分布参数
     'fv': 0.194,                  # 冰的体积分布
     'L': 0.01,                   # 介质物理尺寸 10mm
-    'grid_resolution': 128,       # 介质网格分辨率
+    'grid_resolution': 256,       # 介质网格分辨率
     'seed': 42,                    # 随机种子
     'RAW_DATA_DIR': "RawData",          # 随机场数据保存目录
     'FORCE_REGENERATE': False          # 设为 True 强制重新生成
@@ -57,7 +57,7 @@ def main():
     # print(f"Image saved to {output_filename}")
     # plt.show()
     
-    snow_medium.visualize_3d(show_scalar_field=False, export_html=False, auto_downsample=True)
+    snow_medium.visualize_3d(show_scalar_field=False, display_mode="image", auto_downsample=False)
     
     
 if __name__ == "__main__":
