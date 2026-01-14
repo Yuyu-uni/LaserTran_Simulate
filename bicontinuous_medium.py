@@ -27,6 +27,25 @@ class BicontinuousMedium:
         self.L = None             # 介质物理尺寸（立方体边长m）
         self.resolution = None    # 介质网格分辨率
         
+    def get_binary_medium(self):
+        '''
+        获取二值化介质数据
+        
+        :return: 3D numpy array 二值化介质
+        '''
+        if self.binary_medium is None:
+            raise ValueError("请先生成介质 (调用 generate 方法) 后再获取数据。")
+        return self.binary_medium
+    
+    def get_scalar_field(self):
+        '''
+        获取连续标量场数据 S(r)
+        
+        :return: 3D numpy array 标量场 S(r)
+        '''
+        if self.scalar_field is None:
+            raise ValueError("请先生成介质 (调用 generate 方法) 后再获取数据。")
+        return self.scalar_field
 
 # region 生成双连续介质核心方法
     def generate(self, L, grid_resolution, 
@@ -93,8 +112,7 @@ class BicontinuousMedium:
         if cache_dir:
             self._save_to_file(directory=cache_dir, seed=seed)
         
-        # 返回二值化后的介质
-        return self.binary_medium
+        print("✔️ 双连续介质生成完成。请通过get函数调用介质数据。")
     
     
     def _self_scalar_field_generate(self, seed=None, max_memory_gb=2.0):
@@ -362,18 +380,60 @@ class BicontinuousMedium:
                 # 连续标量场：使用体积渲染
                 plotter.add_volume(grid_pt, scalars="values", cmap=cmap, opacity="sigmoid")
         else:
-            plotter.set_background("white")
-            # 二值化介质：只显示冰相 (值为1的部分)
-            thresholded = grid.threshold(value=0.5, scalars="values")
-            plotter.add_mesh(thresholded, color="lightblue", opacity=opacity, 
-                           show_edges=show_edges, edge_color="gray")
+            # 设置深色背景以增强对比度
+            plotter.set_background("#1a1a1a")  # 深灰色背景
+            
+            # 二值化介质：分别显示冰相和空气相
+            # 冰相 (值为1的部分) - 使用亮蓝色/青色
+            ice_phase = grid.threshold(value=0.5, scalars="values")
+            plotter.add_mesh(
+                ice_phase, 
+                color="#00D4FF",  # 亮青色 (冰)
+                opacity=opacity, 
+                show_edges=show_edges, 
+                edge_color="white",
+                label="Ice Phase"
+            )
+            
+            # 可选：显示空气相轮廓（半透明黄色）以更好地理解结构
+            air_phase = grid.threshold(value=0.5, scalars="values", invert=True)
+            plotter.add_mesh(
+                air_phase,
+                color="#FFB84D",  # 橙黄色 (空气)
+                opacity=opacity * 0.3,  # 更透明
+                show_edges=False,
+                label="Air Phase"
+            )
+            
+            # 添加图例
+            plotter.add_legend(
+                labels=[
+                    ("Ice Phase", "#00D4FF"),
+                    ("Air Phase", "#FFB84D")
+                ],
+                bcolor="#2a2a2a",  # 图例背景色
+                face="rectangle",
+                size=(0.15, 0.12),
+                loc="upper right"
+            )
         
-        # 添加坐标轴和标题
-        plotter.add_axes()
-        plotter.add_title(title, font_size=12)
+        # 添加坐标轴
+        plotter.add_axes(
+            xlabel="X (m)",
+            ylabel="Y (m)",
+            zlabel="Z (m)",
+            line_width=2,
+            color="white" if not show_scalar_field else "white"
+        )
+        
+        # 添加标题
+        plotter.add_title(title, font_size=14, color="white")
         
         # 添加边界框
-        plotter.add_bounding_box(color="black", line_width=1)
+        plotter.add_bounding_box(
+            color="white" if not show_scalar_field else "white", 
+            line_width=2
+        )
         
         # 根据 display_mode 执行不同的操作
         if display_mode == "interact":

@@ -1,8 +1,10 @@
 from bicontinuous_medium import BicontinuousMedium
+from extinction_calculator import ExtinctionCalculator
+from absorption_calculator import AbsorptionCalculator
 import numpy as np
 from scipy.special import erfinv, gamma 
 import matplotlib
-matplotlib.use('Agg')  # 使用非交互式后端以支持无显示环境下的绘图
+# matplotlib.use('Agg')  # 使用非交互式后端以支持无显示环境下的绘图
 
 import matplotlib.pyplot as plt
 import os
@@ -33,7 +35,7 @@ def main():
     )
     
     # 生成或加载随机场（自动检测缓存）
-    medium = snow_medium.generate(
+    snow_medium.generate(
         L=PARAMS['L'],
         grid_resolution=PARAMS['grid_resolution'],
         seed=PARAMS['seed'],
@@ -43,22 +45,30 @@ def main():
     )
     
     # 比较体积分数的理论值和模拟值
-    # actual_fv = np.sum(medium) / medium.size
+    # actual_fv = np.sum(snow_medium.get_binary_medium()) / snow_medium.get_binary_medium().size
     # print(f"🚀目标体积分数: {snow_medium.fv}")
     # print(f"🌟实际体积分数: {actual_fv:.4f}")
     
+    # 可视化二维切片
     # plt.figure(figsize=(8, 8))
     # plt.imshow(snow_medium.get_slice_image(1), cmap='gray', interpolation='nearest')
     # plt.title(f"Snow Microstructure Slice(fv={actual_fv:.3f})")
-    # plt.colorbar(label="Phase (0:Air, 1:Ice)")
-    
+    # plt.colorbar(label="Phase (0:Air, 1:Ice)")    
     # output_filename = "Results/snow_microstructure.png"
     # plt.savefig(output_filename)
     # print(f"Image saved to {output_filename}")
     # plt.show()
     
-    snow_medium.visualize_3d(show_scalar_field=False, display_mode="image", auto_downsample=False)
+    # 可视化三维结构
+    # snow_medium.visualize_3d(show_scalar_field=False, display_mode="interact", auto_downsample=False)
     
+    ext_calc = ExtinctionCalculator(medium_instance=snow_medium)
+    ext_result = ext_calc.run_simulation(wavelength_nm = 1300)
+    # ext_calc.plot_results()
+    
+    abs_calc = AbsorptionCalculator(medium_instance=snow_medium, extinction_coefficient = ext_result)
+    abs_result = abs_calc.run_simulation(wavelength_nm = 1300, max_dist_mm=20.0)
+    abs_calc.plot_results()
     
 if __name__ == "__main__":
     main()
