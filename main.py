@@ -1,6 +1,7 @@
 from bicontinuous_medium import BicontinuousMedium
 from extinction_calculator import ExtinctionCalculator
 from absorption_calculator import AbsorptionCalculator
+from phase_matrix_calculator import PhaseMatrixCalculator
 import numpy as np
 from scipy.special import erfinv, gamma 
 import matplotlib
@@ -69,6 +70,13 @@ def main():
     abs_calc = AbsorptionCalculator(medium_instance=snow_medium, extinction_coefficient = ext_result)
     abs_result = abs_calc.run_simulation(wavelength_nm = 1300, max_dist_mm=20.0)
     abs_calc.plot_results()
+
+    kappa_s = ext_result - abs_result
+    pm_calc = PhaseMatrixCalculator(medium_instance=snow_medium, kappa_s=kappa_s)
+    pm_calc.run_simulation(n_rays=100000, n_angle_bins=180)
+    pm_calc.plot_results(wavelength_nm=1300)
+    pm_calc.plot_cartesian(wavelength_nm=1300)
+    pm_calc.get_asymmetry_parameter()
     
 if __name__ == "__main__":
     main()

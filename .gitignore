@@ -18,3 +18,6 @@ RawData/
 
 # Gemini context
 GEMINI.md
+
+# Agents
+.agent/

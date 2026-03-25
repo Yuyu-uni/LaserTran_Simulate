@@ -363,6 +363,8 @@ class AbsorptionCalculator:
     def _absorption_curve_fit(self, ice_absorption):
         """
         进行吸收概率曲线最小二乘拟合，以提取吸收系数。
+        ! 注意：拟合使用了理想吸收概率模型 P_abs(L) = 1 - exp(-k * L)，其中 k 是吸收系数。
+        ! 与论文中实际使用的(1 - exp(-k_e * L)) * k_a/k_e不同
         
         :param ice_absorption: 冰的吸收系数
         
