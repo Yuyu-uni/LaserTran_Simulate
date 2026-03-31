@@ -14,15 +14,15 @@ import os
 PARAMS = {
     'N': 1000,                    # 蒙特卡洛叠加次数
     'mean_waveNumber': 5349.7,    # 平均波数
-    'b': 1.345,                   # 粒径分布参数
-    'fv': 0.194,                  # 冰的体积分布
+    'b': 1.345,                   # 粒径分布参数 
+    'fv': 0.194,                  # 冰的体积分布 (snow density/ice density)
     'L': 0.01,                   # 介质物理尺寸 10mm
     'grid_resolution': 256,       # 介质网格分辨率
     'seed': 42,                    # 随机种子
     'RAW_DATA_DIR': "RawData",          # 随机场数据保存目录
     'FORCE_REGENERATE': False          # 设为 True 强制重新生成
 }
-
+# 来自figure1 的雪层参数 (mean_waveNumber=5349.7, b=1.345, fv=0.194)
 
 # ============================
 

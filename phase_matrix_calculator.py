@@ -411,6 +411,124 @@ class PhaseMatrixCalculator:
         self._n_angle_bins: int = None
 
     # ------------------------------------------------------------------
+    # 坐标变换工具（1-2 参考系 to 主坐标系）
+    # ------------------------------------------------------------------
+    @staticmethod
+    def stokes_rotation_matrix(sigma) -> np.ndarray:
+        """
+        返回 Stokes 列向量约定下的旋转矩阵 L(sigma)。
+
+        论文中的旋转发生在 Stokes 空间，因此矩阵元素使用 2*sigma
+        而不是 sigma。输入既可以是标量，也可以是可广播的数组。
+        """
+        sigma_arr = np.asarray(sigma, dtype=float)
+        cos_2sigma = np.cos(2.0 * sigma_arr)
+        sin_2sigma = np.sin(2.0 * sigma_arr)
+
+        rot = np.zeros(sigma_arr.shape + (4, 4), dtype=float)
+        rot[..., 0, 0] = 1.0
+        rot[..., 1, 1] = cos_2sigma
+        rot[..., 1, 2] = sin_2sigma
+        rot[..., 2, 1] = -sin_2sigma
+        rot[..., 2, 2] = cos_2sigma
+        rot[..., 3, 3] = 1.0
+        return rot
+
+    @staticmethod
+    def transform_phase_matrix_to_principal(
+        phase_matrix_12,
+        sigma1,
+        sigma2,
+    ) -> np.ndarray:
+        """
+        将 1-2 参考系中的相矩阵变换到主坐标系。
+
+        变换公式为：
+            P_principal = L(sigma2) @ P_12 @ L(-sigma1)
+
+        其中 sigma1 和 sigma2 由调用方提供，单位为弧度。
+        输入支持单个 4x4 相矩阵，也支持形状为 (..., 4, 4) 的批量矩阵。
+        """
+        phase_matrix = np.asarray(phase_matrix_12, dtype=float)
+        if phase_matrix.shape[-2:] != (4, 4):
+            raise ValueError(
+                "phase_matrix_12 的最后两维必须是 (4, 4)，"
+                f"当前收到的是 {phase_matrix.shape}。"
+            )
+
+        sigma1_arr = np.asarray(sigma1, dtype=float)
+        sigma2_arr = np.asarray(sigma2, dtype=float)
+
+        try:
+            leading_shape = np.broadcast_shapes(
+                phase_matrix.shape[:-2],
+                sigma1_arr.shape,
+                sigma2_arr.shape,
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "phase_matrix_12、sigma1 和 sigma2 的前导维无法广播到同一形状。"
+            ) from exc
+
+        phase_broadcast = np.broadcast_to(phase_matrix, leading_shape + (4, 4))
+        left_rotation = np.broadcast_to(
+            PhaseMatrixCalculator.stokes_rotation_matrix(sigma2_arr),
+            leading_shape + (4, 4),
+        )
+        right_rotation = np.broadcast_to(
+            PhaseMatrixCalculator.stokes_rotation_matrix(-sigma1_arr),
+            leading_shape + (4, 4),
+        )
+
+        return left_rotation @ phase_broadcast @ right_rotation
+
+    @staticmethod
+    def transform_diagonal_phase_matrix_to_principal(
+        P11,
+        P22,
+        sigma1,
+        sigma2,
+    ) -> np.ndarray:
+        """
+        便捷接口：针对当前仅有 P11/P22 非零的 1-2 系相矩阵做主坐标系变换。
+
+        默认输入矩阵为
+            [[P11, 0,   0, 0],
+             [0,   P22, 0, 0],
+             [0,   0,   0, 0],
+             [0,   0,   0, 0]]
+        """
+        p11_arr = np.asarray(P11, dtype=float)
+        p22_arr = np.asarray(P22, dtype=float)
+        sigma1_arr = np.asarray(sigma1, dtype=float)
+        sigma2_arr = np.asarray(sigma2, dtype=float)
+
+        try:
+            leading_shape = np.broadcast_shapes(
+                p11_arr.shape,
+                p22_arr.shape,
+                sigma1_arr.shape,
+                sigma2_arr.shape,
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "P11、P22、sigma1 和 sigma2 无法广播到同一形状。"
+            ) from exc
+
+        p11_broadcast = np.broadcast_to(p11_arr, leading_shape)
+        p22_broadcast = np.broadcast_to(p22_arr, leading_shape)
+
+        phase_matrix_12 = np.zeros(leading_shape + (4, 4), dtype=float)
+        phase_matrix_12[..., 0, 0] = p11_broadcast
+        phase_matrix_12[..., 1, 1] = p22_broadcast
+
+        return PhaseMatrixCalculator.transform_phase_matrix_to_principal(
+            phase_matrix_12=phase_matrix_12,
+            sigma1=sigma1_arr,
+            sigma2=sigma2_arr,
+        )
+
+    # ------------------------------------------------------------------
     # 主仿真接口
     # ------------------------------------------------------------------
 
@@ -535,13 +653,21 @@ class PhaseMatrixCalculator:
         ):
             ax.plot(self.angles, data, linewidth=1.8)
             ax.fill(self.angles, data, alpha=0.18)
-            ax.set_theta_zero_location("N")   # 0° 在顶部（前向散射）
-            ax.set_theta_direction(-1)        # 顺时针增大
+            ax.set_theta_zero_location("E")   # 0° 在右侧
+            ax.set_theta_direction(1)         # 角度逆时针增大
+            ax.set_thetamin(0.0)
+            ax.set_thetamax(180.0)
+            ax.set_rlabel_position(180.0)     # 径向刻度标签放到左侧
+
+            radial_max = max(float(np.max(data)) * 1.05, 1e-12)
+            ax.set_ylim(0.0, radial_max)
+            # 在半圆左边界添加显式径向轴线，便于读取纵向刻度
+            ax.plot([np.pi, np.pi], [0.0, radial_max], color="black", linewidth=0.9)
             ax.set_title(label, fontsize=11, pad=18)
-            # 添加 0°/180° 标注
+            # 仅保留上半圆的角度标注
             ax.set_thetagrids(
-                range(0, 361, 30),
-                labels=[f"{a}°" for a in range(0, 361, 30)],
+                range(0, 181, 15),
+                labels=[f"{a}°" for a in range(0, 181, 15)],
                 fontsize=7,
             )
 
