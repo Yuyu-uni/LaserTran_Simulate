@@ -14,6 +14,8 @@
 
 import numpy as np
 from numba import njit
+from scipy.special import erfinv
+from typing import Optional
 
 
 # ==============================================================================
@@ -21,6 +23,7 @@ from numba import njit
 # ==============================================================================
 N_AIR: float = 1.0      # 空气折射率
 N_ICE: float = 1.31     # 冰折射率
+# NOTE: 这里的 N_ICE 会随波长略有变化，实际应用中可根据需要调整
 
 
 # ==============================================================================
@@ -177,7 +180,7 @@ def refract_vector(dx: float, dy: float, dz: float,
 # ==============================================================================
 #  非 Numba 函数 (用于类调用)
 # ==============================================================================
-
+# NOTE: 冰折射率的虚部 n_imag 会随波长变化，实际应用中可根据需要调整。
 def compute_ice_absorption(wavelength_nm: float, n_imag: float = 1.3e-5) -> float:
     """
     根据波长计算冰的吸收系数。
@@ -190,3 +193,66 @@ def compute_ice_absorption(wavelength_nm: float, n_imag: float = 1.3e-5) -> floa
     wavelength_m = wavelength_nm * 1e-9  # 转换为米
     ice_absorption = 4.0 * np.pi * n_imag / wavelength_m  # m^-1
     return ice_absorption
+
+
+def convert_ssa_re_to_medium_params(
+    ssa: Optional[float] = None,
+    r_e: Optional[float] = None,
+    b: float = 1.345,
+    fv: float = 0.194,
+    consistency_rtol: float = 1e-6,
+) -> dict[str, float]:
+    """
+    将 SSA / R_e 转换为双连续介质所需参数 (mean_waveNumber, b, fv)。
+
+    公式:
+    SSA = [2*<varsigma>*exp(-(erfinv(1-2*fv))^2)/(0.918*pi*sqrt(3)*fv)] * sqrt((b+2)/(b+1))
+    R_e = 3/(0.918*SSA)
+
+    :param ssa: 比表面积 SSA (m^-1)
+    :param r_e: 等效晶粒半径 R_e (m)
+    :param b: 粒径分布参数
+    :param fv: 冰相体积分数
+    :param consistency_rtol: 同时输入 SSA 与 R_e 时的一致性相对误差阈值
+    :return: 包含 mean_waveNumber, b, fv, SSA, R_e 的字典
+    """
+    if ssa is None and r_e is None:
+        raise ValueError("ssa 与 r_e 至少需要提供一个。")
+
+    if b <= -1.0:
+        raise ValueError("b 必须大于 -1，才能保证 sqrt((b+2)/(b+1)) 有定义。")
+    if not (0.0 < fv < 1.0):
+        raise ValueError("fv 必须位于 (0, 1) 区间。")
+
+    if ssa is not None and ssa <= 0.0:
+        raise ValueError("ssa 必须为正数。")
+    if r_e is not None and r_e <= 0.0:
+        raise ValueError("r_e 必须为正数。")
+
+    if ssa is None:
+        ssa = 3.0 / (0.918 * r_e)
+    if r_e is None:
+        r_e = 3.0 / (0.918 * ssa)
+
+    expected_r_e = 3.0 / (0.918 * ssa)
+    if not np.isclose(r_e, expected_r_e, rtol=consistency_rtol, atol=0.0):
+        raise ValueError(
+            f"ssa 与 r_e 不一致: 给定 r_e={r_e:.6e}, 由 ssa 推算 r_e={expected_r_e:.6e}。"
+        )
+
+    erf_term = erfinv(1.0 - 2.0 * fv)
+    coeff = (
+        2.0
+        * np.exp(-(erf_term ** 2))
+        / (0.918 * np.pi * np.sqrt(3.0) * fv)
+        * np.sqrt((b + 2.0) / (b + 1.0))
+    )
+    mean_wave_number = ssa / coeff
+
+    return {
+        "mean_waveNumber": float(mean_wave_number),
+        "b": float(b),
+        "fv": float(fv),
+        "SSA": float(ssa),
+        "R_e": float(r_e),
+    }
