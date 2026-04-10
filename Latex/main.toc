@@ -1,0 +1,29 @@
+\contentsline {section}{\numberline {1}相矩阵的构建与计算}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}相矩阵概念}{2}{subsection.1.1}%
+\contentsline {paragraph}{1-2 坐标系（局部散射坐标系）}{2}{paragraph*.3}%
+\contentsline {paragraph}{主坐标系（极化参考坐标系）}{2}{paragraph*.4}%
+\contentsline {subsection}{\numberline {1.2}坐标系变换}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}散射系数与相矩阵的关系}{3}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}蒙特卡洛算法实现}{3}{subsection.1.4}%
+\contentsline {section}{\numberline {2}矢量辐射传输方程求解}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}矢量辐射传输方程}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}约化项与漫射项分解}{6}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}方位角傅里叶展开}{6}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}离散坐标法与 ODE 方程组构建}{7}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}特征值法求解与边界条件}{8}{subsection.2.5}%
+\contentsline {subsubsection}{\numberline {2.5.1}特解}{8}{subsubsection.2.5.1}%
+\contentsline {subsubsection}{\numberline {2.5.2}齐次解}{8}{subsubsection.2.5.2}%
+\contentsline {subsubsection}{\numberline {2.5.3}边界条件}{8}{subsubsection.2.5.3}%
+\contentsline {subsubsection}{\numberline {2.5.4}雪面向上漫射辐射}{9}{subsubsection.2.5.4}%
+\contentsline {subsection}{\numberline {2.6}算法流程与代码实现}{9}{subsection.2.6}%
+\contentsline {section}{\numberline {3}雪面反射特性计算}{9}{section.3}%
+\contentsline {subsection}{\numberline {3.1}双向反射分布函数（BRDF）}{9}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}半球反照率（Albedo）}{10}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}各向异性反射因子（ARF）}{10}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}极化双向反射分布函数（极化 BRDF）}{11}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}数值结果}{11}{subsection.3.5}%
+\contentsline {section}{\numberline {4}与现实雪层参数的联系}{13}{section.4}%
+\contentsline {section}{\numberline {5}整体项目总结与展望}{14}{section.5}%
+\contentsline {subsection}{\numberline {5.1}完整计算链路}{14}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}存在问题}{14}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}未来方向}{14}{subsection.5.3}%
